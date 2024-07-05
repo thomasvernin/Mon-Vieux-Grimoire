@@ -73,12 +73,31 @@ app.get('/', sayHI);
 app.post("/api/auth/signup", signUp);
 app.post("/api/auth/login", login);
 
-
-console.log("password in .env", process.env);
-
 app.listen(PORT, function () {
     console.log(`Server is running on: ${PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
 
 
 
