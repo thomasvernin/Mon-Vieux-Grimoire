@@ -3,6 +3,7 @@ const app = express();
 const { User } = require("./db/mongo");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const {books} = require("./db/books");
 
 const PORT = 4000;
 
@@ -72,6 +73,12 @@ async function login(req, res) {
 app.get('/', sayHI);
 app.post("/api/auth/signup", signUp);
 app.post("/api/auth/login", login);
+app.get("/api/books", getBooks);
+
+function getBooks(req,res) {
+    res.send(books);
+}
+
 
 app.listen(PORT, function () {
     console.log(`Server is running on: ${PORT}`);
