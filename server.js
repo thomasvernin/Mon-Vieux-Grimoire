@@ -14,11 +14,25 @@ function sayHI(req, res) {
 function signUp(req, res) {
     const body = req.body;
     console.log("body", body);
-    res.status(201).send('User signed up');
+    res.send("Sign up");
 }
+
+function login(req, res) {
+    const body = req.body;
+    console.log("body", body);
+    res.send({
+        userId: "123" ,
+        token : "token"
+    });
+}
+
+
+
+
 
 app.get('/', sayHI);
 app.post("/api/auth/signup", signUp);
+app.post("/api/auth/login", login);
 
 app.listen(PORT, function () {
     console.log(`Server is running on: ${PORT}`);
