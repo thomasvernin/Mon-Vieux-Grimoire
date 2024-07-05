@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const { User } = require("./db/mongo");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 
 const PORT = 4000;
 
@@ -23,26 +24,49 @@ async function signUp(req, res) {
             return;
         }
 
+        const hashedPassword = await bcrypt.hash(password, 10); // Hachage du mot de passe
+        console.log(`Hashed password: ${hashedPassword}`); // Affichage du mot de passe haché dans le terminal
+
         const user = new User({
             email: email,
-            password: password
+            password: hashedPassword // Utilisation du mot de passe haché
         });
 
         await user.save();
-        res.send("Sign up successful");
+        res.send({
+            message: "Sign up successful",
+            hashedPassword: hashedPassword // Inclure le mot de passe haché dans la réponse
+        });
     } catch (e) {
         console.error(e);
         res.status(500).send("Something went wrong");
     }
 }
 
-function login(req, res) {
-    const body = req.body;
-    console.log("body", body);
-    res.send({
-        userId: "123",
-        token: "token"
-    });
+async function login(req, res) {
+    const { email, password } = req.body;
+    
+    try {
+        const user = await User.findOne({ email: email });
+        if (!user) {
+            res.status(400).send("Invalid email or password");
+            return;
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            res.status(400).send("Invalid email or password");
+            return;
+        }
+
+        res.send({
+            userId: user._id,
+            token: "token" // Vous pouvez générer un vrai token JWT ici
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("Something went wrong");
+    }
 }
 
 app.get('/', sayHI);
@@ -52,4 +76,11 @@ app.post("/api/auth/login", login);
 app.listen(PORT, function () {
     console.log(`Server is running on: ${PORT}`);
 });
+
+
+
+
+
+
+
 
