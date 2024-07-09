@@ -90,6 +90,9 @@ async function login(req, res) {
     }
 }
 
+
+
+
 // Route pour ajouter un livre
 async function postBook(req, res) {
     const file = req.file;
@@ -136,12 +139,40 @@ async function getBooks(req, res) {
     }
 }
 
+// Fonction pour obtenir le chemin absolu de l'image
+function getAbsoluteImagePath(relativePath) {
+    return `http://localhost:4000${relativePath}`;
+}
+
+// Route pour récupérer un livre par ID
+async function getBookById(req, res) {
+    const id = req.params.id;
+    try {
+        const book = await Book.findById(id);
+        if (book == null) {
+            res.status(404).send("Book not found");
+            return;
+        }
+        book.imageUrl = getAbsoluteImagePath(book.imageUrl);
+        res.send(book);
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("Something went wrong:" + e.message);
+    }
+}
+
+// Définir le router pour les livres
+const booksRouter = express.Router();
+booksRouter.get("/:id", getBookById);
+booksRouter.get("/", getBooks);
+booksRouter.post("/", upload.single("image"), postBook);
+
 // Routes
 app.get('/', sayHI);
 app.post("/api/auth/signup", signUp);
 app.post("/api/auth/login", login);
-app.get("/api/books", getBooks);
-app.post("/api/books", upload.single("image"), postBook);
+app.use("/api/books", booksRouter);
+
 
 
 
@@ -149,6 +180,14 @@ app.post("/api/books", upload.single("image"), postBook);
 app.listen(PORT, function () {
     console.log(`Server is running on: ${PORT}`);
 });
+
+
+
+
+
+
+
+
 
 
 
