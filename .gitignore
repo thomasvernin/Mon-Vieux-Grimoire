@@ -1,4 +1,8 @@
 node_modules
 requests.http
-.env
+
 uploads/
+
+# Ignore les fichiers .env
+.env
+

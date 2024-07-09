@@ -3,47 +3,51 @@ const app = express();
 const { User, Book } = require("./db/mongo");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
-const { books } = require("./db/books") || []; // Assurez-vous que books est un tableau
 const multer = require("multer");
 const path = require('path');
 
+const PORT = 4000;
+
+// Middleware pour la gestion des uploads d'images avec multer
 const storage = multer.diskStorage({
-   destination: function (req, file, cb) {
-       cb(null, path.join(__dirname, "uploads"));
-   },
-   filename: function (req, file, cb) {
-       const fileName = file.originalname.toLowerCase().split(' ').join('-') + '-' + Date.now() + ".jpg";
-       cb(null, fileName);
-   }
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, "uploads"));
+    },
+    filename: function (req, file, cb) {
+        const fileName = file.originalname.toLowerCase().split(' ').join('-') + '-' + Date.now() + ".jpg";
+        cb(null, fileName);
+    }
 });
 
 const upload = multer({
     storage: storage
 });
 
-const PORT = 4000;
-
+// Middleware pour autoriser les requêtes cross-origin
 app.use(cors());
+
+// Middleware pour traiter les données JSON
 app.use(express.json());
+
+// Middleware pour servir les fichiers statiques depuis le répertoire 'uploads'
 app.use("/images", express.static(path.join(__dirname, "uploads")));
 
+// Route de test
 function sayHI(req, res) {
     res.send('Hello World');
 }
 
+// Route pour l'inscription
 async function signUp(req, res) {
-    const email = req.body.email;
-    const password = req.body.password;
+    const { email, password } = req.body;
 
     try {
         const userInDb = await User.findOne({ email: email });
         if (userInDb) {
-            res.status(400).send("Email already exists");
-            return;
+            return res.status(400).send("Email already exists");
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        console.log(`Hashed password: ${hashedPassword}`);
 
         const user = new User({
             email: email,
@@ -61,20 +65,19 @@ async function signUp(req, res) {
     }
 }
 
+// Route pour la connexion
 async function login(req, res) {
     const { email, password } = req.body;
 
     try {
         const user = await User.findOne({ email: email });
         if (!user) {
-            res.status(400).send("Invalid email or password");
-            return;
+            return res.status(400).send("Invalid email or password");
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            res.status(400).send("Invalid email or password");
-            return;
+            return res.status(400).send("Invalid email or password");
         }
 
         res.send({
@@ -87,6 +90,7 @@ async function login(req, res) {
     }
 }
 
+// Route pour ajouter un livre
 async function postBook(req, res) {
     const file = req.file;
     if (!file) {
@@ -94,15 +98,16 @@ async function postBook(req, res) {
     }
 
     try {
-        const stringifiedBook = req.body.book;
-        const book = JSON.parse(stringifiedBook);
-        const filename = req.file.filename; 
-        book.imageUrl = filename; 
-        
-        const result = await Book.create(book);
-        console.log("result from DB:", result);
+        const { book } = req.body;
+        const parsedBook = JSON.parse(book);
 
-        books.push(book);
+        // Enregistrer le chemin de l'image dans le livre
+        const imageUrl = `/images/${file.filename}`;
+        parsedBook.imageUrl = imageUrl;
+
+        // Enregistrer le livre dans la base de données MongoDB
+        const result = await Book.create(parsedBook);
+
         res.status(201).send({
             message: "Book added successfully",
             book: result
@@ -113,25 +118,40 @@ async function postBook(req, res) {
     }
 }
 
-function getBooks(req, res) {
-    const booksWithFullImageUrl = books.map(book => {
-        return {
-            ...book,
-            imageUrl: `http://localhost:4000/images/${book.imageUrl}`
-        };
-    });
-    res.send(booksWithFullImageUrl);
+// Route pour récupérer tous les livres
+async function getBooks(req, res) {
+    try {
+        const books = await Book.find();
+
+        // Transformer les URL des images en URL complètes
+        const booksWithFullImageUrl = books.map(book => ({
+            ...book.toObject(),
+            imageUrl: `http://localhost:4000/images/${path.basename(book.imageUrl)}`
+        }));
+
+        res.send(booksWithFullImageUrl);
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("Something went wrong");
+    }
 }
 
+// Routes
 app.get('/', sayHI);
 app.post("/api/auth/signup", signUp);
 app.post("/api/auth/login", login);
 app.get("/api/books", getBooks);
 app.post("/api/books", upload.single("image"), postBook);
 
+
+
+// Démarrer le serveur
 app.listen(PORT, function () {
     console.log(`Server is running on: ${PORT}`);
 });
+
+
+
 
 
 
