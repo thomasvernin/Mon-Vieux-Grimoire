@@ -1,9 +1,12 @@
 require("dotenv").config();
 const mongoose = require('mongoose');
 
-const PASSWORD = "tvernin49100";
-const USER = "tvernin49100";
-const DB_URL = `mongodb+srv://${USER}:${PASSWORD}@cluster0.37u4gzq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const USER = process.env.DB_USER;
+const PASSWORD = process.env.DB_PASSWORD;
+const DB_DOMAIN = process.env.DB_DOMAIN;
+const DB_NAME = process.env.DB_NAME;
+const DB_URL = `mongodb+srv://${USER}:${PASSWORD}@${DB_DOMAIN}/${DB_NAME}`;
+
 console.log("DB_URL:", DB_URL);
 
 async function connect() {
@@ -49,6 +52,43 @@ const Book = mongoose.model("Book", BookSchema);
 
 
 module.exports = {User , Book };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
