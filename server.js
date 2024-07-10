@@ -174,20 +174,34 @@ app.get("/api/books/:id", async (req, res) => {
 app.put("/api/books/:id", upload.single("image"), async (req, res) => {
     const id = req.params.id;
     const file = req.file;
+    const { book } = req.body;
 
     try {
+        const parsedBook = JSON.parse(book);
         const bookInDb = await Book.findById(id);
+
         if (!bookInDb) {
             return res.status(404).send("Book not found");
         }
 
-        // Parse les données du livre depuis la requête
-        let parsedBook = req.body;
-
         // Mettre à jour le chemin de l'image si une nouvelle image est téléchargée
         if (file) {
+            // Supprimer l'ancienne image associée au livre
+            if (bookInDb.imageUrl) {
+                const imagePathToDelete = path.join(__dirname, "uploads", path.basename(bookInDb.imageUrl));
+                fs.unlink(imagePathToDelete, (err) => {
+                    if (err) {
+                        console.error("Failed to delete old image:", err);
+                    }
+                });
+            }
+
+            // Mettre à jour le chemin de l'image avec le nouveau fichier
             const imageUrl = `/images/${file.filename}`;
             parsedBook.imageUrl = imageUrl;
+        } else {
+            // Conserver l'ancien chemin d'image si aucun nouveau fichier n'est téléchargé
+            parsedBook.imageUrl = bookInDb.imageUrl;
         }
 
         // Mettre à jour chaque champ modifié du livre
@@ -200,7 +214,7 @@ app.put("/api/books/:id", upload.single("image"), async (req, res) => {
         // Enregistrer les modifications dans la base de données MongoDB
         const updatedBook = await bookInDb.save();
 
-        // Mettre à jour l'URL complète de l'image
+        // Mettre à jour l'URL complète de l'image dans la réponse
         updatedBook.imageUrl = `http://localhost:4000/images/${path.basename(updatedBook.imageUrl)}`;
 
         res.send({
@@ -212,6 +226,11 @@ app.put("/api/books/:id", upload.single("image"), async (req, res) => {
         res.status(500).send("Something went wrong: " + e.message);
     }
 });
+
+
+
+
+
 
 
 // Route pour supprimer un livre par ID
@@ -245,6 +264,8 @@ app.delete("/api/books/:id", async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on: ${PORT}`);
 });
+
+
 
 
 
