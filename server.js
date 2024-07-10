@@ -12,16 +12,33 @@ const PORT = 4000;
 // Middleware pour la gestion des uploads d'images avec multer
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, "uploads"));
+        const uploadPath = path.join(__dirname, "uploads");
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
-        const fileName = file.originalname.toLowerCase().split(' ').join('-') + '-' + Date.now() + ".jpg";
+        const fileName = file.originalname.toLowerCase().split(' ').join('-') + '-' + Date.now() + path.extname(file.originalname);
         cb(null, fileName);
     }
 });
 
 const upload = multer({
-    storage: storage
+    storage: storage,
+    limits: { fileSize: 1024 * 1024 * 5 }, // Limite de taille de fichier (5MB)
+    fileFilter: (req, file, cb) => {
+        // Vérifiez le type de fichier
+        const filetypes = /jpeg|jpg|png/;
+        const mimetype = filetypes.test(file.mimetype);
+        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb("Error: Only images are allowed!");
+        }
+    }
 });
 
 // Middleware pour autoriser les requêtes cross-origin
@@ -34,12 +51,12 @@ app.use(express.json());
 app.use("/images", express.static(path.join(__dirname, "uploads")));
 
 // Route de test
-function sayHI(req, res) {
+app.get('/', (req, res) => {
     res.send('Hello World');
-}
+});
 
 // Route pour l'inscription
-async function signUp(req, res) {
+app.post("/api/auth/signup", async (req, res) => {
     const { email, password } = req.body;
 
     try {
@@ -61,13 +78,13 @@ async function signUp(req, res) {
             hashedPassword: hashedPassword
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error in signUp:", e);
         res.status(500).send("Something went wrong");
     }
-}
+});
 
 // Route pour la connexion
-async function login(req, res) {
+app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
 
     try {
@@ -86,13 +103,13 @@ async function login(req, res) {
             token: "token" // Vous pouvez générer un vrai token JWT ici
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error in login:", e);
         res.status(500).send("Something went wrong");
     }
-}
+});
 
 // Route pour ajouter un livre
-async function postBook(req, res) {
+app.post("/api/books", upload.single("image"), async (req, res) => {
     const file = req.file;
     if (!file) {
         return res.status(400).send("Image file is required");
@@ -114,13 +131,13 @@ async function postBook(req, res) {
             book: result
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error in postBook:", e);
         res.status(500).send("Something went wrong");
     }
-}
+});
 
 // Route pour récupérer tous les livres
-async function getBooks(req, res) {
+app.get("/api/books", async (req, res) => {
     try {
         const books = await Book.find();
 
@@ -132,35 +149,73 @@ async function getBooks(req, res) {
 
         res.send(booksWithFullImageUrl);
     } catch (e) {
-        console.error(e);
+        console.error("Error in getBooks:", e);
         res.status(500).send("Something went wrong");
     }
-}
-
-// Fonction pour obtenir le chemin absolu de l'image
-function getAbsoluteImagePath(relativePath) {
-    return `http://localhost:4000${relativePath}`;
-}
+});
 
 // Route pour récupérer un livre par ID
-async function getBookById(req, res) {
+app.get("/api/books/:id", async (req, res) => {
     const id = req.params.id;
     try {
         const book = await Book.findById(id);
-        if (book == null) {
-            res.status(404).send("Book not found");
-            return;
+        if (!book) {
+            return res.status(404).send("Book not found");
         }
-        book.imageUrl = getAbsoluteImagePath(book.imageUrl);
+        book.imageUrl = `http://localhost:4000/images/${path.basename(book.imageUrl)}`;
         res.send(book);
     } catch (e) {
-        console.error(e);
+        console.error("Error in getBookById:", e);
         res.status(500).send("Something went wrong:" + e.message);
     }
-}
+});
+
+// Route pour mettre à jour un livre par ID
+app.put("/api/books/:id", upload.single("image"), async (req, res) => {
+    const id = req.params.id;
+    const file = req.file;
+
+    try {
+        const bookInDb = await Book.findById(id);
+        if (!bookInDb) {
+            return res.status(404).send("Book not found");
+        }
+
+        // Parse les données du livre depuis la requête
+        let parsedBook = req.body;
+
+        // Mettre à jour le chemin de l'image si une nouvelle image est téléchargée
+        if (file) {
+            const imageUrl = `/images/${file.filename}`;
+            parsedBook.imageUrl = imageUrl;
+        }
+
+        // Mettre à jour chaque champ modifié du livre
+        for (let prop in parsedBook) {
+            if (parsedBook.hasOwnProperty(prop)) {
+                bookInDb[prop] = parsedBook[prop];
+            }
+        }
+
+        // Enregistrer les modifications dans la base de données MongoDB
+        const updatedBook = await bookInDb.save();
+
+        // Mettre à jour l'URL complète de l'image
+        updatedBook.imageUrl = `http://localhost:4000/images/${path.basename(updatedBook.imageUrl)}`;
+
+        res.send({
+            message: "Book updated successfully",
+            book: updatedBook
+        });
+    } catch (e) {
+        console.error("Error in updateBook:", e);
+        res.status(500).send("Something went wrong: " + e.message);
+    }
+});
+
 
 // Route pour supprimer un livre par ID
-async function deleteBook(req, res) {
+app.delete("/api/books/:id", async (req, res) => {
     const id = req.params.id;
     try {
         const book = await Book.findByIdAndDelete(id);
@@ -181,26 +236,13 @@ async function deleteBook(req, res) {
             book: book
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error in deleteBook:", e);
         res.status(500).send("Something went wrong:" + e.message);
     }
-}
-
-// Définir le router pour les livres
-const booksRouter = express.Router();
-booksRouter.get("/:id", getBookById);
-booksRouter.get("/", getBooks);
-booksRouter.post("/", upload.single("image"), postBook);
-booksRouter.delete("/:id", deleteBook);
-
-// Routes
-app.get('/', sayHI);
-app.post("/api/auth/signup", signUp);
-app.post("/api/auth/login", login);
-app.use("/api/books", booksRouter);
+});
 
 // Démarrer le serveur
-app.listen(PORT, function () {
+app.listen(PORT, () => {
     console.log(`Server is running on: ${PORT}`);
 });
 
@@ -239,6 +281,1597 @@ app.listen(PORT, function () {
 
 
 
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
 
 
@@ -1775,7 +3408,6 @@ app.listen(PORT, function () {
 
 
   
-
 
 
 
