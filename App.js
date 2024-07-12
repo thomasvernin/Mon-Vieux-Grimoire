@@ -2,10 +2,7 @@
 const express = require('express')
 const app = express()
 
-// Middleware pour éviter les attaques d'injection MongoDB
-const mongoSanitize = require('express-mongo-sanitize');
-// Enlever toutes les clés contenant des caractères interdits
-app.use(mongoSanitize());
+
 
 require('dotenv').config()
 
