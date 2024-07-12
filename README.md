@@ -27,26 +27,29 @@ Je suis développeur back-end freelance depuis maintenant un an dans la région 
 
 Voici la structure du projet backend :
 
-```
 MonVieuxGrimoire/
-├── config/
-│   └── database.js
 ├── controllers/
-│   ├── bookController.js
-│   └── userController.js
+│   ├── book.controller.js
+│   └── user.controller.js
+├── images/
+├── middleware/
+│   ├── auth.js
+│   └── multer-config.js
 ├── models/
-│   ├── bookModel.js
-│   └── userModel.js
+│   ├── book.model.js
+│   └── user.model.js
 ├── routes/
-│   ├── bookRoutes.js
-│   └── userRoutes.js
-├── middlewares/
-│   └── authMiddleware.js
-├── .env
-├── app.js
+│   ├── book.routes.js
+│   └── user.routes.js
+├── .env.example
+├── .gitignore
+├── App.js
+├── README.md
+├── package-lock.json
 ├── package.json
-└── README.md
-```
+├── requests.http
+└── server.js
+
 
 ## Installation
 
