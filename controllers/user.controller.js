@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 
 const emailRegex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
-const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+
 
 // Inscription d'un nouvel utilisateur
 exports.signup = (req, res, next) => {
@@ -13,10 +13,7 @@ exports.signup = (req, res, next) => {
       return res.status(410).json({message:"Email non conforme"})
   }
 
-  // Vérifie que le mot de passe est conforme au regex
-  if(!passwordRegex.test(req.body.password)){
-      return res.status(410).json({message: "Le mot de passe doit contenir au moins 8 caractères, dont une majuscule et un chiffre"})
-  }
+
 
   // Vérifie si l'utilisateur est déjà enregistré dans la base de données
   User.findOne({email: req.body.email}).then(user => {
