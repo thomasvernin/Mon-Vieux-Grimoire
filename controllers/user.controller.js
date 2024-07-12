@@ -2,16 +2,13 @@ const User = require('../models/user.model.js')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 
-const emailRegex = /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+
 
 
 // Inscription d'un nouvel utilisateur
 exports.signup = (req, res, next) => {
 
-  // Vérifie que l'adresse email est conforme au regex
-  if (!emailRegex.test(req.body.email)) {
-      return res.status(410).json({message:"Email non conforme"})
-  }
+  
 
 
 
