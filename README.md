@@ -1,6 +1,6 @@
 # Mon Vieux Grimoire - Backend
 
-Bienvenue dans le dépôt du backend du projet **Mon Vieux Grimoire**. Ce projet a pour but de créer un site web pour une chaîne de librairies, permettant le référencement et la notation de livres. Ce backend a été développé avec **Node.js**, **Express**, et **MongoDB**.
+Bienvenue dans le dépôt du backend du projet **Mon Vieux Grimoire**. Ce projet a pour but de créer un site web pour une chaîne de librairies, permettant le référencement et la notation de livres. Ce backend a été développé avec **Node.js**, **Express.js**, et **MongoDB**.
 
 ## Stack Technique
 
@@ -8,7 +8,7 @@ Bienvenue dans le dépôt du backend du projet **Mon Vieux Grimoire**. Ce projet
 ![Node.js](https://img.icons8.com/color/48/000000/nodejs.png)
 
 ### Express
-![Express](https://img.icons8.com/ios-filled/50/000000/express-js.png)
+
 
 ### MongoDB
 ![MongoDB](https://img.icons8.com/color/48/000000/mongodb.png)
@@ -27,6 +27,7 @@ Je suis développeur back-end freelance depuis maintenant un an dans la région 
 
 Voici la structure du projet backend :
 
+```
 MonVieuxGrimoire/
 ├── controllers/
 │   ├── book.controller.js
@@ -49,7 +50,7 @@ MonVieuxGrimoire/
 ├── package.json
 ├── requests.http
 └── server.js
-
+```
 
 ## Installation
 
@@ -82,9 +83,11 @@ Pour installer et démarrer le projet, suivez les étapes suivantes :
 - **Notation de livres**
 - **Sécurisation des opérations avec JWT**
 
+## Contribution
+
 ## Lien du Frontend
 
-Le dépôt du frontend du projet est disponible [ici](https://github.com/your-username/MonVieuxGrimoire-frontend).
+Le dépôt du frontend du projet est disponible [ici](https://github.com/thomasvernin/MonVieuxGrimoire-frontend).
 
 ---
 
