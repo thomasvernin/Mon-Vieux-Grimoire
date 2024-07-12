@@ -1,7 +1,6 @@
 node_modules
-requests.http
 
-uploads/
+images/
 
 # Ignore les fichiers .env
 .env

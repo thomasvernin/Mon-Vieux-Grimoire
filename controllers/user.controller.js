@@ -3,17 +3,11 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 
 
-
-
 // Inscription d'un nouvel utilisateur
 exports.signup = (req, res, next) => {
 
-  
-
-
-
-  // Vérifie si l'utilisateur est déjà enregistré dans la base de données
-  User.findOne({email: req.body.email}).then(user => {
+// Vérifie si l'utilisateur est déjà enregistré dans la base de données
+User.findOne({email: req.body.email}).then(user => {
       if(user){
           return res.status(409).json({message: "Utilisateur déjà existant"})
       } else {
