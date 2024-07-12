@@ -79,10 +79,6 @@ Pour installer et démarrer le projet, suivez les étapes suivantes :
 - **Notation de livres**
 - **Sécurisation des opérations avec JWT**
 
-## Contribution
-
-Les contributions sont les bienvenues ! Veuillez lire le [CONTRIBUTING.md](CONTRIBUTING.md) pour plus de détails sur notre code de conduite et le processus de soumission des demandes de tirage.
-
 ## Lien du Frontend
 
 Le dépôt du frontend du projet est disponible [ici](https://github.com/your-username/MonVieuxGrimoire-frontend).
