@@ -1,7 +1,4 @@
 node_modules
-
-images/
-
-# Ignore les fichiers .env
+images
 .env
 
