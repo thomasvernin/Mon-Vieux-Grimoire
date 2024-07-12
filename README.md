@@ -1,3 +1,5 @@
+<> Dossier Backend du projet " Mon Vieux Grimoire " / Stack utilité : NodeJs, Express & MongoDB pour la base de données. </>
+
 Scénario : 
 
 Je suis développeur back-end en freelance depuis maintenant un an dans la région de Lille.
@@ -12,3 +14,7 @@ Mettre en œuvre des opérations CRUD de manière sécurisée
 Stocker des données de manière sécurisée
 
 Lien du repo github du frontend : 
+
+
+
+Vernin Thomas
