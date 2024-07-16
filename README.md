@@ -87,7 +87,7 @@ Pour installer et démarrer le projet, suivez les étapes suivantes :
 
 ## Lien du Frontend
 
-Le dépôt du frontend du projet est disponible [ici](https://github.com/thomasvernin/MonVieuxGrimoire-frontend).
+Le dépôt du frontend du projet est disponible [ici](https://github.com/OpenClassrooms-Student-Center/P7-Dev-Web-livres).
 
 ---
 
