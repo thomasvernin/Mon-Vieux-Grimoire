@@ -2,8 +2,6 @@
 const express = require('express')
 const app = express()
 
-
-
 require('dotenv').config()
 
 // Middleware pour parser les requêtes JSON et URL encodées
