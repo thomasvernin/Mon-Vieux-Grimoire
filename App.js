@@ -2,7 +2,7 @@
 const express = require('express')
 const app = express()
 
-require('dotenv').config()
+// require('dotenv').config() 
 
 // Middleware pour parser les requêtes JSON et URL encodées
 app.use(express.json())
@@ -12,10 +12,10 @@ app.use(express.urlencoded({ extended: false }))
 const mongodb_password = process.env.MONGODB_PASSWORD
 const mongodb_username = process.env.MONGODB_USERNAME
 const mongoose = require('mongoose')
-mongoose.connect(`mongodb+srv://${mongodb_username}:${mongodb_password}@cluster0.37u4gzq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`,
+mongoose.connect(`mongodb+srv://${mongodb_username}:${mongodb_password}@cluster0.37u4gzq.mongodb.net/Mon_vieux_grimoire?retryWrites=true&w=majority&appName=Cluster0`,
   { useNewUrlParser: true,
     useUnifiedTopology: true })
-  .then(() => console.log('Connexion à MongoDB réussie !'))
+  .then(() => console.log('Connexion à MongoDB réussie !'))  
   .catch(() => console.log('Connexion à MongoDB échouée !'))
 
 
