@@ -1,10 +1,9 @@
 const Book = require('../models/book.model.js')
 const fs = require('fs');
 
-
+// Récupère tous les livres
 exports.getAllBooks = async (req, res, next) => {
   try {
-    // Retrieves all books
     const books = await Book.find()
     res.status(200).json(books)
   } catch (error) {
@@ -12,10 +11,9 @@ exports.getAllBooks = async (req, res, next) => {
   }
 }
 
-
+// Récupère les 3 livres les mieux notés
 exports.getTopRatedBooks = async (req, res, next) => {
   try {
-    // Retrieves the 3 top rated books
     const topRatedBooks = await Book.find()
       .sort({ averageRating: -1 })
       .limit(3)
@@ -25,9 +23,8 @@ exports.getTopRatedBooks = async (req, res, next) => {
   }
 }
 
-
+// Récupère le livre correspondant à l'ID passé dans la requête
 exports.getOneBook = async (req, res, next) => {
-  // Retrieves the book according to the id passed in the request
   try {
     const book = await Book.findOne({ _id: req.params.id })
     if (book) {
@@ -40,50 +37,48 @@ exports.getOneBook = async (req, res, next) => {
   }
 }
 
-
+// Crée un nouveau livre
 exports.createBook = async (req, res, next) => {
-
-  // Convert JSON response to Object
+  // Convertit la réponse JSON en objet
   const bookObject = JSON.parse(req.body.book)
 
-  // Checks that the request contains a file so as not to save an orphan file
+  // Vérifie que la requête contient un fichier pour éviter de sauvegarder un fichier orphelin
   if(!req.file){
     return res.status(400).json({ message: 'File missing' })
-
   } else {
-    // Never trust user input
+    // Ne jamais faire confiance aux données des utilisateurs
     delete bookObject._id
     delete bookObject._userId
 
-  // If the user has not rated the book, empty the table (useful so that the user can still rate his book later)
-  if(bookObject.ratings[0].grade === 0){
-  bookObject.ratings = []
-  }
+    // Si l'utilisateur n'a pas noté le livre, vider le tableau (utile pour permettre à l'utilisateur de noter son livre plus tard)
+    if(bookObject.ratings[0].grade === 0){
+      bookObject.ratings = []
+    }
 
-  const filename = req.file.filename
+    const filename = req.file.filename
 
-  // Create a new Book from the reponse data
-  const book = new Book({
-    ...bookObject,
-    userId: req.auth.userId,
-    imageUrl: `${req.protocol}://${req.get('host')}/images/${filename}`
-  })
+    // Crée un nouveau livre à partir des données de la réponse
+    const book = new Book({
+      ...bookObject,
+      userId: req.auth.userId,
+      imageUrl: `${req.protocol}://${req.get('host')}/images/${filename}`
+    })
 
-  // Save the book to MongoDB
-  try {
-    await book.save()
-    res.status(201).json({ message: 'Book saved' })
-  } catch (error) {      
+    // Sauvegarde le livre dans MongoDB
+    try {
+      await book.save()
+      res.status(201).json({ message: 'Book saved' })
+    } catch (error) {      
       fs.unlinkSync(`images/${filename}`)
-    res.status(400).json({ error })
-  }
+      res.status(400).json({ error })
+    }
   }  
 }
 
-
+// Ajoute une note à un livre
 exports.addBookRating = async (req, res, next) => {
-   // Check that the user has not already rated the book
-   const existingRating = await Book.findOne({
+  // Vérifie que l'utilisateur n'a pas déjà noté le livre
+  const existingRating = await Book.findOne({
     _id: req.params.id,
     "ratings.userId": req.body.userId
   })
@@ -91,22 +86,22 @@ exports.addBookRating = async (req, res, next) => {
     return res.status(400).json({ message: 'User has already rated this book' })
   }
 
-  // Check that the rating is a number between 0..5 included
+  // Vérifie que la note est un nombre compris entre 0 et 5 inclus
   if(!(req.body.rating  >= 0) && !(req.body.rating  <= 5) && (typeof req.body.rating === 'number')){
     return res.status(500).json({ message: 'Grade is not between 0 and 5 included or is not a number' })
   }
 
   try {
-    // Retrieves the book to rate according to the id of the request
+    // Récupère le livre à noter selon l'ID de la requête
     const book = await Book.findOne({ _id: req.params.id })
     if (!book) {
       return res.status(404).json({ message: 'Book not found' })
     }
 
-    // Add a new rating to the ratings array of the book
+    // Ajoute une nouvelle note au tableau des notes du livre
     book.ratings.push({ userId : req.body.userId, grade: req.body.rating })
 
-    // Save the book to MongoDB, averageRating will be up to date on save
+    // Sauvegarde le livre dans MongoDB, averageRating sera mis à jour lors de la sauvegarde
     await book.save()
     res.status(200).json(book)
   } catch (error) {
@@ -115,36 +110,34 @@ exports.addBookRating = async (req, res, next) => {
   }
 }
 
-
+// Modifie un livre
 exports.modifyBook = async (req, res, next) => {
-  // Check if a file is included in the request
   try {
+    // Vérifie si un fichier est inclus dans la requête
     const bookObject = req.file
-        // If so, convert request JSON to Object
-      ? {
+        ? {
           ...JSON.parse(req.body.book),
           imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
         }
-        // If not, use data from req.body
-      : { ...req.body } 
+        : { ...req.body } 
 
     delete bookObject._userId
 
-     // Retrieves book that match the id specified in the request params
+    // Récupère le livre correspondant à l'ID spécifié dans les paramètres de la requête
     const book = await Book.findOne({ _id: req.params.id })
 
-    // Check if user is authorized to modify the book
+    // Vérifie si l'utilisateur est autorisé à modifier le livre
     if (book.userId != req.auth.userId) {
       return res.status(403).json({message: 'Unauthorized request'})
     }
 
-    // If request contain a file, remove the old file from the back end (images folder)
+    // Si la requête contient un fichier, supprime l'ancien fichier du backend (dossier images)
     if (req.file) {
       const filename = book.imageUrl.split('/images/')[1]
       fs.unlinkSync(`images/${filename}`)
     }
 
-    // Update book
+    // Met à jour le livre
     await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
     res.status(200).json({ message: 'Book modified!' })
   } catch (error) {
@@ -152,22 +145,19 @@ exports.modifyBook = async (req, res, next) => {
   }
 }
 
-
+// Supprime un livre
 exports.deleteBook = (req, res, next) => {
-  // Retrieves the book according to the id passed in the request
+  // Récupère le livre correspondant à l'ID passé dans la requête
   Book.findOne({ _id: req.params.id})
       .then(book => {
-
-        // Check if user is authorized to delete the book
+        // Vérifie si l'utilisateur est autorisé à supprimer le livre
           if (book.userId != req.auth.userId) {
               res.status(403).json({ message: 'Unauthorized request' })
           } else {
-
-              // Delete file from the back end (images folder)
+              // Supprime le fichier du backend (dossier images)
               const filename = book.imageUrl.split('/images/')[1];
               fs.unlink(`images/${filename}`, () => {
-
-                  // Delete the book from MongoDB
+                  // Supprime le livre de MongoDB
                   Book.deleteOne({_id: req.params.id})
                       .then(() => { res.status(200).json({ message: 'Book deleted' })})
                       .catch(error => res.status(401).json({ error }))
@@ -178,6 +168,35 @@ exports.deleteBook = (req, res, next) => {
           res.status(500).json({ error })
       })
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
