@@ -1,35 +1,6 @@
 const Book = require('../models/book.model.js')
 const fs = require('fs');
-const sharp = require('sharp');
 
-const compressImage = async (req, res, next) => {
-  if (req.file) {
-    try {
-      // Redimensionner et compresser l'image
-      const newFilename = req.file.filename.replace(/\.[^.]+$/, ".webp");
-      
-      await sharp(req.file.path)
-        .resize({ width: 498, height: 568, fit: 'inside' }) // Redimensionne tout en conservant les proportions et en s'assurant que l'image ne dépasse pas les dimensions spécifiées
-        .webp({ quality: 50 }) // Compression en format WebP avec qualité de 50%
-        .toFile(`images/${newFilename}`);
-      
-      // Supprimer l'image originale
-      fs.unlinkSync(req.file.path);
-      
-      // Mettre à jour les informations de req.file pour refléter le nouveau fichier WebP
-      req.file.path = `images/${newFilename}`;
-      req.file.filename = newFilename;
-      req.file.mimetype = "image/webp";
-      
-      // Pour déboguer : afficher les informations de req.file mises à jour
-      console.log(req.file);
-    } catch (error) {
-      console.error('Erreur lors de la compression de l\'image:', error);
-      return res.status(500).json({ message: 'Échec de la compression de l\'image', error: error.message });
-    }
-  }
-  next();
-};
 
 exports.getAllBooks = async (req, res, next) => {
   try {
@@ -40,6 +11,7 @@ exports.getAllBooks = async (req, res, next) => {
     res.status(400).json({ error: error })
   }
 }
+
 
 exports.getTopRatedBooks = async (req, res, next) => {
   try {
@@ -52,6 +24,7 @@ exports.getTopRatedBooks = async (req, res, next) => {
     res.status(500).json({ error: 'An error has occurred' })
   }
 }
+
 
 exports.getOneBook = async (req, res, next) => {
   // Retrieves the book according to the id passed in the request
@@ -67,45 +40,46 @@ exports.getOneBook = async (req, res, next) => {
   }
 }
 
+
 exports.createBook = async (req, res, next) => {
-  // Appeler compressImage avant de traiter la création du livre
-  await compressImage(req, res, async () => {
-    // Convert JSON response to Object
-    const bookObject = JSON.parse(req.body.book)
 
-    // Checks that the request contains a file so as not to save an orphan file
-    if(!req.file){
-      return res.status(400).json({ message: 'File missing' })
-    } else {
-      // Never trust user input
-      delete bookObject._id
-      delete bookObject._userId
+  // Convert JSON response to Object
+  const bookObject = JSON.parse(req.body.book)
 
-      // If the user has not rated the book, empty the table (useful so that the user can still rate his book later)
-      if(bookObject.ratings[0].grade === 0){
-        bookObject.ratings = []
-      }
+  // Checks that the request contains a file so as not to save an orphan file
+  if(!req.file){
+    return res.status(400).json({ message: 'File missing' })
 
-      const filename = req.file.filename
+  } else {
+    // Never trust user input
+    delete bookObject._id
+    delete bookObject._userId
 
-      // Create a new Book from the reponse data
-      const book = new Book({
-        ...bookObject,
-        userId: req.auth.userId,
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${filename}`
-      })
+  // If the user has not rated the book, empty the table (useful so that the user can still rate his book later)
+  if(bookObject.ratings[0].grade === 0){
+  bookObject.ratings = []
+  }
 
-      // Save the book to MongoDB
-      try {
-        await book.save()
-        res.status(201).json({ message: 'Book saved' })
-      } catch (error) {      
-        fs.unlinkSync(`images/${filename}`)
-        res.status(400).json({ error })
-      }
-    }  
-  });
+  const filename = req.file.filename
+
+  // Create a new Book from the reponse data
+  const book = new Book({
+    ...bookObject,
+    userId: req.auth.userId,
+    imageUrl: `${req.protocol}://${req.get('host')}/images/${filename}`
+  })
+
+  // Save the book to MongoDB
+  try {
+    await book.save()
+    res.status(201).json({ message: 'Book saved' })
+  } catch (error) {      
+      fs.unlinkSync(`images/${filename}`)
+    res.status(400).json({ error })
+  }
+  }  
 }
+
 
 exports.addBookRating = async (req, res, next) => {
    // Check that the user has not already rated the book
@@ -141,56 +115,58 @@ exports.addBookRating = async (req, res, next) => {
   }
 }
 
+
 exports.modifyBook = async (req, res, next) => {
-  // Appeler compressImage avant de traiter la modification du livre
-  await compressImage(req, res, async () => {
-    // Check if a file is included in the request
-    try {
-      const bookObject = req.file
-          // If so, convert request JSON to Object
-        ? {
-            ...JSON.parse(req.body.book),
-            imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-          }
-          // If not, use data from req.body
-        : { ...req.body } 
+  // Check if a file is included in the request
+  try {
+    const bookObject = req.file
+        // If so, convert request JSON to Object
+      ? {
+          ...JSON.parse(req.body.book),
+          imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+        }
+        // If not, use data from req.body
+      : { ...req.body } 
 
-      delete bookObject._userId
+    delete bookObject._userId
 
-      // Retrieves book that match the id specified in the request params
-      const book = await Book.findOne({ _id: req.params.id })
+     // Retrieves book that match the id specified in the request params
+    const book = await Book.findOne({ _id: req.params.id })
 
-      // Check if user is authorized to modify the book
-      if (book.userId != req.auth.userId) {
-        return res.status(403).json({message: 'Unauthorized request'})
-      }
-
-      // If request contain a file, remove the old file from the back end (images folder)
-      if (req.file) {
-        const filename = book.imageUrl.split('/images/')[1]
-        fs.unlinkSync(`images/${filename}`)
-      }
-
-      // Update book
-      await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
-      res.status(200).json({ message: 'Book modified!' })
-    } catch (error) {
-      res.status(400).json({ error })
+    // Check if user is authorized to modify the book
+    if (book.userId != req.auth.userId) {
+      return res.status(403).json({message: 'Unauthorized request'})
     }
-  });
+
+    // If request contain a file, remove the old file from the back end (images folder)
+    if (req.file) {
+      const filename = book.imageUrl.split('/images/')[1]
+      fs.unlinkSync(`images/${filename}`)
+    }
+
+    // Update book
+    await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
+    res.status(200).json({ message: 'Book modified!' })
+  } catch (error) {
+    res.status(400).json({ error })
+  }
 }
+
 
 exports.deleteBook = (req, res, next) => {
   // Retrieves the book according to the id passed in the request
   Book.findOne({ _id: req.params.id})
       .then(book => {
+
         // Check if user is authorized to delete the book
           if (book.userId != req.auth.userId) {
               res.status(403).json({ message: 'Unauthorized request' })
           } else {
+
               // Delete file from the back end (images folder)
               const filename = book.imageUrl.split('/images/')[1];
               fs.unlink(`images/${filename}`, () => {
+
                   // Delete the book from MongoDB
                   Book.deleteOne({_id: req.params.id})
                       .then(() => { res.status(200).json({ message: 'Book deleted' })})

@@ -1,36 +1,64 @@
-const sharp = require('sharp');
-const fs = require('fs');
+const sharp = require("sharp");
+const fs = require("fs");
+const path = require("path");
 
-const compressImage = async (req, res, next) => {
-  if (req.file) {
-    try {
-      // Redimensionner et compresser l'image
-      const newFilename = req.file.filename.replace(/\.[^.]+$/, ".webp");
-      
-      await sharp(req.file.path)
-        .resize({ width: 498, height: 568, fit: 'inside' }) // Redimensionne tout en conservant les proportions et en s'assurant que l'image ne dépasse pas les dimensions spécifiées
-        .webp({ quality: 50 }) // Compression en format WebP avec qualité de 50%
-        .toFile(`images/${newFilename}`);
-      
-      // Supprimer l'image originale
-      fs.unlinkSync(req.file.path);
-      
-      // Mettre à jour les informations de req.file pour refléter le nouveau fichier WebP
-      req.file.path = `images/${newFilename}`;
-      req.file.filename = newFilename;
-      req.file.mimetype = "image/webp";
-      
-      // Pour déboguer : afficher les informations de req.file mises à jour
-      console.log(req.file);
-    } catch (error) {
-      console.error('Erreur lors de la compression de l\'image:', error);
-      return res.status(500).json({ message: 'Échec de la compression de l\'image', error: error.message });
-    }
-  }
-  next();
+const processImage = (req, res, next) => {
+	if (req.file) {
+		const webpFilename = req.file.filename.replace(/\.[^.]+$/, ".webp");
+		const webpImagePath = path.join("images", webpFilename);
+
+		const newWidth = 400;
+		const newHeight = 600;
+
+		sharp(req.file.path)
+			.resize(newWidth, newHeight)
+			.webp({ quality: 80 })
+			.toFile(webpImagePath, (err, info) => {
+				if (err) {
+					console.error("Erreur lors du traitement de l'image");
+					return res.status(500).json({
+						error: "Erreur lors du traitement de l'image",
+					});
+				}
+
+				//To delete the old image
+				fs.unlink(req.file.path, (err) => {
+					if (err) {
+						console.error(
+							"Erreur lors de la suppression de l'image"
+						);
+					} else {
+						console.log("Ancienne image supprimee avec succes !");
+					}
+				});
+
+				req.file.filename = webpFilename;
+				next();
+			});
+	} else {
+		next();
+	}
 };
 
-module.exports = compressImage;
+module.exports = processImage;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
